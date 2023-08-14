@@ -1,0 +1,69 @@
+import cv2
+import numpy as np
+import time
+import PoseModule2 as pm
+
+# use facecam
+cap = cv2.VideoCapture(1)
+
+# use pose detector
+detector = pm.PoseDetector(detectionCon=0.8)
+
+# count of reps
+count = 0
+
+# direction of 0 is when it is going up, 1 going down
+dir = 0
+pTime = 0
+while True:
+  success, img = cap.read()
+  img = cv2.resize(img, (1280, 720))
+  img = detector.findPose(img, draw=False)
+  lmList = detector.findPosition(img, draw=False)
+  if len(lmList) > 0:
+    # right arm
+    # detector.findAngle(img, 12, 14, 16)
+
+    # left arm
+    angle = detector.findAngle(img, 11, 13, 15)
+
+    # percentage of angle for curl
+    per = np.interp(angle, (40, 150), (0, 100))
+
+    # progress bar
+    bar = np.interp(angle, (40, 150), (650, 100))
+
+    # progress color
+    color = (255, 0, 255)
+    # check if it is a full curl
+    if per == 100:
+      color = (0, 255, 0)
+      if dir == 0:
+        count += 0.5
+        dir = 1
+    elif per == 0:
+      color = (0, 255, 0)
+      if dir == 1:
+        count += 0.5
+        dir = 0
+
+    # display progress bar
+    cv2.rectangle(img, (1100, 100), (1175, 650), color, 3)
+    cv2.rectangle(img, (1100, int(bar)), (1175, 650), color, cv2.FILLED)
+    cv2.putText(img, f'{int(per)}%', (1100, 75), cv2.FONT_HERSHEY_PLAIN,
+                5, color, 4)
+
+    # display rep count
+    cv2.rectangle(img, (0, 450), (250, 720), (0, 255, 0), cv2.FILLED)
+    cv2.putText(img, str(int(count)), (45, 670), cv2.FONT_HERSHEY_PLAIN,
+                10, (255, 0, 0), 25)
+    print(count)
+
+    # display fps
+    cTime = time.time()
+    fps = 1/(cTime-pTime)
+    pTime = cTime
+    cv2.putText(img, f'FPS: {int(fps)}', (40, 70), cv2.FONT_HERSHEY_PLAIN,
+                3, (255, 255, 0), 3)
+  cv2.imshow('Facecam', img)
+  cv2.waitKey(1)
